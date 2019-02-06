@@ -7,6 +7,9 @@ pub mod prelude;
 
 pub use directories;
 pub use lazy_static;
+#[cfg(feature = "yaml")]
+pub use serde_yaml;
+#[cfg(feature = "with-toml")]
 pub use toml;
 
 /// loadable cfg
@@ -29,7 +32,10 @@ pub enum Error {
     IoRead(std::io::Error, PathBuf),
     MakeDir(std::io::Error, PathBuf),
     IoWrite(std::io::Error, PathBuf),
+    #[cfg(feature = "with-toml")]
     Toml(toml::de::Error, PathBuf),
+    #[cfg(feature = "yaml")]
+    Yaml(serde_yaml::Error, PathBuf),
 }
 
 impl std::error::Error for Error {
@@ -38,7 +44,10 @@ impl std::error::Error for Error {
             Error::IoWrite(e, _) => Some(e),
             Error::MakeDir(e, _) => Some(e),
             Error::IoRead(e, _) => Some(e),
+            #[cfg(feature = "with-toml")]
             Error::Toml(e, _) => Some(e),
+            #[cfg(feature = "yaml")]
+            Error::Yaml(e, _) => Some(e),
         }
     }
 }
@@ -55,7 +64,10 @@ impl fmt::Display for Error {
             Error::IoRead(_, path) => {
                 write!(formatter, "Can't read config from {}", path.display())
             }
+            #[cfg(feature = "with-toml")]
             Error::Toml(_, path) => write!(formatter, "Can't read config from {}", path.display()),
+            #[cfg(feature = "yaml")]
+            Error::Yaml(_, path) => write!(formatter, "Can't read config from {}", path.display()),
         }
     }
 }

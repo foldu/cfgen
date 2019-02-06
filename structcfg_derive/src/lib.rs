@@ -3,6 +3,7 @@ extern crate proc_macro;
 
 use std::{collections::HashMap, env};
 
+use cfg_if::cfg_if;
 use heck::SnakeCase;
 use lazy_static::lazy_static;
 use maplit::hashmap;
@@ -45,6 +46,9 @@ fn gen_impl_structfg(input: &DeriveInput, cfg_opt: &CfgOpt) -> proc_macro2::Toke
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
+    let fmt_error = cfg_opt.format.error();
+    let deserialize = cfg_opt.format.deserialize_from_str();
+
     quote! {
         impl #impl_generics ::structcfg::StructCfg for #name #ty_generics #where_clause {
             fn path() -> &'static std::path::Path {
@@ -62,7 +66,7 @@ fn gen_impl_structfg(input: &DeriveInput, cfg_opt: &CfgOpt) -> proc_macro2::Toke
                 let cont = ::std::fs::read_to_string(Self::path())
                     .map_err(|e| ::structcfg::Error::IoRead(e, Self::path().to_owned()))?;
 
-                ::structcfg::toml::from_str(&cont).map_err(|e| structcfg::Error::Toml(e, Self::path().to_owned()))
+                #deserialize(&cont).map_err(|e| #fmt_error(e, Self::path().to_owned()))
             }
         }
     }
@@ -77,6 +81,8 @@ fn gen_impl_structfg_default(input: &DeriveInput, cfg_opt: &CfgOpt) -> proc_macr
         &format!("default_config_deserializable_for{}", name).to_snake_case(),
         Span::call_site(),
     );
+
+    let deserialize = cfg_opt.format.deserialize_from_str();
 
     quote! {
         impl #impl_generics ::structcfg::StructCfgDefault for #name #ty_generics #where_clause {
@@ -111,7 +117,7 @@ fn gen_impl_structfg_default(input: &DeriveInput, cfg_opt: &CfgOpt) -> proc_macr
 
         #[test]
         fn #test_ident() {
-            let _a: #name = ::structcfg::toml::from_str(#default_ident).unwrap();
+            let _a: #name = #deserialize(#default_ident).unwrap();
         }
     }
 }
@@ -156,6 +162,7 @@ fn parse_field(field: &Meta, cfg_opt: &mut CfgOpt) {
                 "qualifier".to_owned() => KvParser::Str(|s, opt| opt.qualifier = s),
                 "default".to_owned() => KvParser::Str(|s, opt| opt.default_config_ident = Some(Ident::new(&s, Span::call_site()))),
                 "filename".to_owned() => KvParser::Str(|s, opt| opt.filename = s),
+                "format".to_owned() => KvParser::Str(|s, opt| opt.format = s.parse().unwrap()),
             }
         };
     };
@@ -180,6 +187,62 @@ fn parse_field(field: &Meta, cfg_opt: &mut CfgOpt) {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+enum Format {
+    Yaml,
+    Toml,
+}
+
+impl Format {
+    fn default_filename(&self) -> &'static str {
+        match self {
+            Format::Yaml => "config.yaml",
+            Format::Toml => "config.toml",
+        }
+    }
+
+    fn deserialize_from_str(&self) -> proc_macro2::TokenStream {
+        match self {
+            Format::Yaml => quote! { ::structcfg::serde_yaml::from_str },
+            Format::Toml => quote! { ::structcfg::toml::from_str },
+        }
+    }
+
+    fn error(&self) -> proc_macro2::TokenStream {
+        match self {
+            Format::Yaml => quote! { ::structcfg::Error::Yaml },
+            Format::Toml => quote! { ::structcfg::Error::Toml },
+        }
+    }
+}
+
+impl std::str::FromStr for Format {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "yaml" => Ok(Format::Yaml),
+            "toml" => Ok(Format::Toml),
+            _ => panic!("Unknown format: {}", s),
+        }
+    }
+}
+
+cfg_if! {
+    if #[cfg(feature = "with-toml")] {
+        fn default_format() -> Format {
+            Format::Toml
+        }
+    } else if #[cfg(feature = "yaml")] {
+        fn default_format() -> Format {
+            Format::Yaml
+        }
+    } else {
+        fn default_format() -> Format {
+            panic!("structcfg needs at least one optional format features enabled")
+        }
+    }
+}
+
 #[derive(Debug)]
 struct CfgOpt {
     pub org: String,
@@ -187,6 +250,7 @@ struct CfgOpt {
     pub application: String,
     pub default_config_ident: Option<Ident>,
     pub filename: String,
+    pub format: Format,
 }
 
 impl Default for CfgOpt {
@@ -204,12 +268,15 @@ impl Default for CfgOpt {
             panic!("Add at least one pkg author to Cargo.toml or set org when passing options to structcfg");
         }
 
+        let format = default_format();
+
         Self {
             org,
             qualifier: "org".to_owned(),
             application: env::var("CARGO_PKG_NAME").unwrap().to_owned(),
             default_config_ident: None,
-            filename: "config.toml".to_owned(),
+            filename: format.default_filename().to_owned(),
+            format,
         }
     }
 }
