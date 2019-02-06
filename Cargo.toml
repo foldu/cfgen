@@ -1,0 +1,14 @@
+[package]
+name = "structcfg"
+version = "0.1.0"
+authors = ["foldu <foldu@protonmail.com>"]
+edition = "2018"
+license = "MIT"
+
+[dependencies]
+toml = "0.4.10"
+structcfg_derive = { path = "structcfg_derive" }
+lazy_static = "1.2.0"
+directories = "1.0.2"
+serde_derive = "1.0.87"
+serde = "1.0.87"

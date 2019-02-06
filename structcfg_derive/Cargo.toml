@@ -1,0 +1,17 @@
+[package]
+name = "structcfg_derive"
+version = "0.1.0"
+authors = ["foldu <foldu@protonmail.com>"]
+edition = "2018"
+license = "MIT"
+
+[dependencies]
+syn = {version = "0.15.26", features = ["extra-traits"]}
+quote = "0.6.11"
+proc-macro2 = "0.4.27"
+maplit = "1.0.1"
+heck = "0.3.1"
+lazy_static = "1.2.0"
+
+[lib]
+proc-macro = true
