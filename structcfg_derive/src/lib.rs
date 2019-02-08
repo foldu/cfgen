@@ -138,7 +138,9 @@ fn parse_all_attrs(attrs: &[Attribute]) -> CfgOpt {
                     for value in opt.nested {
                         match value {
                             NestedMeta::Meta(meta) => parse_field(&meta, &mut ret),
-                            NestedMeta::Literal(_) => panic!("TODO: fixme"),
+                            NestedMeta::Literal(_) => {
+                                panic!("Unkeyed literal arguments not supported")
+                            }
                         }
                     }
                 }
