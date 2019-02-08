@@ -86,21 +86,22 @@ fn gen_impl_cfgen_default(input: &DeriveInput, cfg_opt: &CfgOpt) -> proc_macro2:
 
     quote! {
         impl #impl_generics ::cfgen::CfgenDefault for #name #ty_generics #where_clause {
-            fn load_or_write_default() -> Result<Self, ::cfgen::Error> {
+            fn load_or_write_default() -> Result<(Self, bool), ::cfgen::Error> {
                 match Self::load() {
-                    Ok(ret) => Ok(ret),
+                    Ok(ret) => Ok((ret, false)),
                     Err(::cfgen::Error::IoRead(e, path)) => {
                         match e.kind() {
                             ::std::io::ErrorKind::NotFound => {
-                                Self::write_default()
+                                let ret = Self::write_default()?;
+                                Ok((ret, true))
                             }
                             _ => {
                                 Err(::cfgen::Error::IoRead(e, path))
                             }
                         }
                     }
-                    e => {
-                        e
+                    Err(e) => {
+                        Err(e)
                     }
                 }
             }

@@ -89,8 +89,9 @@ pub trait CfgenDefault: Cfgen {
     fn write_default() -> Result<Self, Error>;
 
     /// If the config file doesn't exist, writes the default to Cfgen::path() and then tries to
-    /// load the default config on disk. Errors with all possible cfgen::Errors.
-    fn load_or_write_default() -> Result<Self, Error>;
+    /// load the default config on disk. Returns a tuple consisting of the deserialized config
+    /// and a bool that is true if the default config was written. Errors with all possible cfgen::Errors.
+    fn load_or_write_default() -> Result<(Self, bool), Error>;
 }
 
 /// All possible errors this crate can return.
