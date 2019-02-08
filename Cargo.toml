@@ -13,7 +13,9 @@ yaml = ["structcfg_derive/yaml", "serde_yaml"]
 structcfg_derive = { path = "structcfg_derive" }
 lazy_static = "1.2.0"
 directories = "1.0.2"
-serde_derive = "1.0.87"
-serde = "1.0.87"
 serde_yaml = { version = "0.8.8", optional = true }
 toml = { version = "0.4.10", optional = true }
+
+[dev-dependencies]
+serde_derive = "1.0.87"
+serde = "1.0.87"
