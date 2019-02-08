@@ -238,7 +238,7 @@ cfg_if! {
         }
     } else {
         fn default_format() -> Format {
-            panic!("structcfg needs at least one optional format features enabled")
+            panic!("structcfg needs at least one format feature enabled")
         }
     }
 }
