@@ -196,7 +196,7 @@ enum Format {
 impl Format {
     fn default_filename(&self) -> &'static str {
         match self {
-            Format::Yaml => "config.yaml",
+            Format::Yaml => "config.yml",
             Format::Toml => "config.toml",
         }
     }
