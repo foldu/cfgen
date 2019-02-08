@@ -1,2 +1,2 @@
-pub use crate::{StructCfg, StructCfgDefault};
-pub use structcfg_derive::*;
+pub use crate::{Cfgen, CfgenDefault};
+pub use cfgen_derive::*;

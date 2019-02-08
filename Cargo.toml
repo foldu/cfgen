@@ -1,16 +1,16 @@
 [package]
-name = "structcfg"
+name = "cfgen"
 version = "0.1.0"
 authors = ["foldu <foldu@protonmail.com>"]
 edition = "2018"
 license = "MIT"
 
 [features]
-with-toml = ["structcfg_derive/with-toml", "toml"]
-yaml = ["structcfg_derive/yaml", "serde_yaml"]
+with-toml = ["cfgen_derive/with-toml", "toml"]
+yaml = ["cfgen_derive/yaml", "serde_yaml"]
 
 [dependencies]
-structcfg_derive = { path = "structcfg_derive" }
+cfgen_derive = { path = "cfgen_derive" }
 lazy_static = "1.2.0"
 directories = "1.0.2"
 serde_yaml = { version = "0.8.8", optional = true }

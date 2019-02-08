@@ -1,20 +1,31 @@
-extern crate structcfg;
+extern crate cfgen;
 
+use cfgen::prelude::*;
 use serde_derive::*;
-use structcfg::prelude::*;
 
 // TODO: real tests
 
-#[derive(StructCfg, Deserialize)]
-#[structcfg(org = "test_org")]
+#[derive(Cfgen, Deserialize)]
 struct _A {}
 
-const _D: &str = r#"
+const _TOML_DEFAULT: &str = r#"
 _b = "test"
 "#;
 
-#[derive(StructCfg, Deserialize)]
-#[structcfg(app_name = "test", default = "_D")]
-struct _B {
+#[cfg(feature = "with-toml")]
+#[derive(Cfgen, Deserialize)]
+#[cfgen(app_name = "test", default = "_TOML_DEFAULT", format = "toml")]
+struct _TomlTest {
+    _b: String,
+}
+
+const _YAML_DEFAULT: &str = r#"
+_b: test
+"#;
+
+#[cfg(feature = "yaml")]
+#[derive(Cfgen, Deserialize)]
+#[cfgen(app_name = "test", default = "_YAML_DEFAULT", format = "yaml")]
+struct _YamlTest {
     _b: String,
 }

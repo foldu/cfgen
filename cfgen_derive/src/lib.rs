@@ -12,30 +12,30 @@ use proc_macro2::Span;
 use quote::quote;
 use syn::{parse_macro_input, Attribute, Data, DeriveInput, Ident, Lit, Meta, NestedMeta};
 
-#[proc_macro_derive(StructCfg, attributes(structcfg))]
-pub fn structcfg(tokens: TokenStream) -> TokenStream {
+#[proc_macro_derive(Cfgen, attributes(cfgen))]
+pub fn cfgen(tokens: TokenStream) -> TokenStream {
     let input = parse_macro_input!(tokens as DeriveInput);
 
     match input.data {
         Data::Struct(_) => {}
-        _ => panic!("Deriving StructCfg only makes sense for structs"),
+        _ => panic!("Deriving cfgen only makes sense for structs"),
     }
 
     let opt = parse_all_attrs(&input.attrs);
 
-    let impl_structcfg = gen_impl_structfg(&input, &opt);
-    let impl_structcfg_default = opt
+    let impl_cfgen = gen_impl_cfgen(&input, &opt);
+    let impl_cfgen_default = opt
         .default_config_ident
         .as_ref()
-        .map(|_| gen_impl_structfg_default(&input, &opt));
+        .map(|_| gen_impl_cfgen_default(&input, &opt));
 
     TokenStream::from(quote! {
-        #impl_structcfg
-        #impl_structcfg_default
+        #impl_cfgen
+        #impl_cfgen_default
     })
 }
 
-fn gen_impl_structfg(input: &DeriveInput, cfg_opt: &CfgOpt) -> proc_macro2::TokenStream {
+fn gen_impl_cfgen(input: &DeriveInput, cfg_opt: &CfgOpt) -> proc_macro2::TokenStream {
     let CfgOpt {
         org,
         qualifier,
@@ -50,21 +50,21 @@ fn gen_impl_structfg(input: &DeriveInput, cfg_opt: &CfgOpt) -> proc_macro2::Toke
     let deserialize = cfg_opt.format.deserialize_from_str();
 
     quote! {
-        impl #impl_generics ::structcfg::StructCfg for #name #ty_generics #where_clause {
+        impl #impl_generics ::cfgen::Cfgen for #name #ty_generics #where_clause {
             fn path() -> &'static std::path::Path {
-                use ::structcfg::lazy_static::lazy_static;
+                use ::cfgen::lazy_static::lazy_static;
                 lazy_static! {
                     static ref PATH: ::std::path::PathBuf = {
-                        ::structcfg::directories::ProjectDirs::from(#qualifier, #org, #application).expect("Can't create project dirs").config_dir().join(#filename)
+                        ::cfgen::directories::ProjectDirs::from(#qualifier, #org, #application).expect("Can't create project dirs").config_dir().join(#filename)
                     };
 
                 };
                 &PATH
             }
 
-            fn load() -> Result<Self, ::structcfg::Error> {
+            fn load() -> Result<Self, ::cfgen::Error> {
                 let cont = ::std::fs::read_to_string(Self::path())
-                    .map_err(|e| ::structcfg::Error::IoRead(e, Self::path().to_owned()))?;
+                    .map_err(|e| ::cfgen::Error::IoRead(e, Self::path().to_owned()))?;
 
                 #deserialize(&cont).map_err(|e| #fmt_error(e, Self::path().to_owned()))
             }
@@ -72,7 +72,7 @@ fn gen_impl_structfg(input: &DeriveInput, cfg_opt: &CfgOpt) -> proc_macro2::Toke
     }
 }
 
-fn gen_impl_structfg_default(input: &DeriveInput, cfg_opt: &CfgOpt) -> proc_macro2::TokenStream {
+fn gen_impl_cfgen_default(input: &DeriveInput, cfg_opt: &CfgOpt) -> proc_macro2::TokenStream {
     let default_ident = &cfg_opt.default_config_ident;
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
@@ -85,17 +85,17 @@ fn gen_impl_structfg_default(input: &DeriveInput, cfg_opt: &CfgOpt) -> proc_macr
     let deserialize = cfg_opt.format.deserialize_from_str();
 
     quote! {
-        impl #impl_generics ::structcfg::StructCfgDefault for #name #ty_generics #where_clause {
-            fn load_or_write_default() -> Result<Self, ::structcfg::Error> {
+        impl #impl_generics ::cfgen::CfgenDefault for #name #ty_generics #where_clause {
+            fn load_or_write_default() -> Result<Self, ::cfgen::Error> {
                 match Self::load() {
                     Ok(ret) => Ok(ret),
-                    Err(::structcfg::Error::IoRead(e, path)) => {
+                    Err(::cfgen::Error::IoRead(e, path)) => {
                         match e.kind() {
                             ::std::io::ErrorKind::NotFound => {
                                 Self::write_default()
                             }
                             _ => {
-                                Err(::structcfg::Error::IoRead(e, path))
+                                Err(::cfgen::Error::IoRead(e, path))
                             }
                         }
                     }
@@ -105,12 +105,12 @@ fn gen_impl_structfg_default(input: &DeriveInput, cfg_opt: &CfgOpt) -> proc_macr
                 }
             }
 
-            fn write_default() -> Result<Self, ::structcfg::Error> {
+            fn write_default() -> Result<Self, ::cfgen::Error> {
                 use ::std::fs;
                 let parent= Self::path().parent().unwrap();
-                fs::create_dir_all(parent).map_err(|e| ::structcfg::Error::MakeDir(e, parent.to_owned()))?;
+                fs::create_dir_all(parent).map_err(|e| ::cfgen::Error::MakeDir(e, parent.to_owned()))?;
                 fs::write(Self::path(), #default_ident)
-                    .map_err(|e| ::structcfg::Error::IoWrite(e, Self::path().to_owned()))?;
+                    .map_err(|e| ::cfgen::Error::IoWrite(e, Self::path().to_owned()))?;
                 Self::load()
             }
         }
@@ -129,10 +129,10 @@ enum KvParser {
 fn parse_all_attrs(attrs: &[Attribute]) -> CfgOpt {
     let mut ret = CfgOpt::default();
 
-    let structcfg_ident = Ident::new("structcfg", Span::call_site());
+    let cfgen_ident = Ident::new("cfgen", Span::call_site());
 
     for meta in attrs.iter().filter_map(|attr| attr.interpret_meta()) {
-        if meta.name() == structcfg_ident {
+        if meta.name() == cfgen_ident {
             match meta {
                 Meta::List(opt) => {
                     for value in opt.nested {
@@ -154,7 +154,7 @@ fn parse_all_attrs(attrs: &[Attribute]) -> CfgOpt {
 }
 
 fn parse_field(field: &Meta, cfg_opt: &mut CfgOpt) {
-    const KV_ERR: &str = "structcfg only supports key value pairs in derive options";
+    const KV_ERR: &str = "cfgen only supports key value pairs in derive options";
 
     lazy_static! {
         static ref KV_PARSERS: HashMap<String, KvParser> = {
@@ -205,15 +205,15 @@ impl Format {
 
     fn deserialize_from_str(&self) -> proc_macro2::TokenStream {
         match self {
-            Format::Yaml => quote! { ::structcfg::serde_yaml::from_str },
-            Format::Toml => quote! { ::structcfg::toml::from_str },
+            Format::Yaml => quote! { ::cfgen::serde_yaml::from_str },
+            Format::Toml => quote! { ::cfgen::toml::from_str },
         }
     }
 
     fn error(&self) -> proc_macro2::TokenStream {
         match self {
-            Format::Yaml => quote! { ::structcfg::Error::Yaml },
-            Format::Toml => quote! { ::structcfg::Error::Toml },
+            Format::Yaml => quote! { ::cfgen::Error::Yaml },
+            Format::Toml => quote! { ::cfgen::Error::Toml },
         }
     }
 }
@@ -240,7 +240,7 @@ cfg_if! {
         }
     } else {
         fn default_format() -> Format {
-            panic!("structcfg needs at least one format feature enabled")
+            panic!("cfgen needs at least one format feature enabled")
         }
     }
 }
@@ -267,7 +267,7 @@ impl Default for CfgOpt {
         };
 
         if org.is_empty() {
-            panic!("Add at least one pkg author to Cargo.toml or set org when passing options to structcfg");
+            panic!("Add at least one pkg author to Cargo.toml or set org when passing options to cfgen");
         }
 
         let format = default_format();

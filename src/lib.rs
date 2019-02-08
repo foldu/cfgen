@@ -13,7 +13,7 @@ pub use serde_yaml;
 pub use toml;
 
 /// loadable cfg
-pub trait StructCfg
+pub trait Cfgen
 where
     Self: Sized,
 {
@@ -22,7 +22,7 @@ where
 }
 
 /// cfg with a specified default
-pub trait StructCfgDefault: StructCfg {
+pub trait CfgenDefault: Cfgen {
     fn load_or_write_default() -> Result<Self, Error>;
     fn write_default() -> Result<Self, Error>;
 }

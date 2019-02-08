@@ -1,5 +1,5 @@
 [package]
-name = "structcfg_derive"
+name = "cfgen_derive"
 version = "0.1.0"
 authors = ["foldu <foldu@protonmail.com>"]
 edition = "2018"
