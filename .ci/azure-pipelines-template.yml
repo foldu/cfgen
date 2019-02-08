@@ -33,4 +33,4 @@ jobs:
         cargo test --features with-toml
         cargo test --features yaml
         cargo test --features with-toml yaml
-      displayName: Run tests
+    displayName: Run tests
