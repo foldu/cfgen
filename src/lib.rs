@@ -90,7 +90,7 @@ pub trait CfgenDefault: Cfgen {
 
     /// If the config file doesn't exist, writes the default to Cfgen::path() and then tries to
     /// load the default config on disk. Returns a [ConfigLoad](ConfigLoad)
-    fn load_or_write_default() -> Result<ConfigLoad<Self>, Error>;
+    fn load_or_write_default() -> Result<(ConfigLoad, Self), Error>;
 }
 
 /// All possible errors this crate can return.
@@ -175,10 +175,10 @@ impl fmt::Display for NiceError {
 }
 
 /// Enum representing the outcome of load_or_write_default
-pub enum ConfigLoad<T> {
+pub enum ConfigLoad {
     /// Default config was written to the config path, contains default
-    DefaultWritten(T),
+    DefaultWritten,
 
     /// Config was loaded without writing default
-    Loaded(T),
+    Loaded,
 }
