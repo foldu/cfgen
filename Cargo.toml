@@ -11,11 +11,12 @@ yaml = ["cfgen_derive/yaml", "serde_yaml"]
 
 [dependencies]
 cfgen_derive = { path = "cfgen_derive" }
-lazy_static = "1.2.0"
-directories = "1.0.2"
-serde_yaml = { version = "0.8.8", optional = true }
-toml = { version = "0.4.10", optional = true }
+lazy_static = "1.0"
+directories = "1.0"
+serde_yaml = { version = "0.8", optional = true }
+toml = { version = "0.4", optional = true }
+tilde-expand = { git = "https://github.com/foldu/tilde-expand" }
+serde = "1.0"
 
 [dev-dependencies]
-serde_derive = "1.0.87"
-serde = "1.0.87"
+serde_derive = "1.0"

@@ -182,3 +182,20 @@ pub enum ConfigLoad {
     /// Config was loaded without writing default
     Loaded,
 }
+
+use serde::de::{Deserialize, Deserializer};
+
+// TODO: better doc, link to tilde-expand
+/// Convenience type around PathBuf. Automatically expands strings like "~/thing" to
+/// "/home/your_name/thing"
+#[derive(Clone, Debug)]
+pub struct ExpandedPath(pub PathBuf);
+
+impl<'de> Deserialize<'de> for ExpandedPath {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        PathBuf::deserialize(deserializer).map(|path| Self(tilde_expand::tilde_expand(path)))
+    }
+}
