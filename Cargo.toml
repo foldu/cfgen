@@ -15,7 +15,7 @@ lazy_static = "1.0"
 directories = "1.0"
 serde_yaml = { version = "0.8", optional = true }
 toml = { version = "0.4", optional = true }
-tilde-expand = { git = "https://github.com/foldu/tilde-expand" }
+tilde-expand = { git = "https://github.com/foldu/tilde-expand", rev = "8963d6673999c1284184ebf97c7be207e7d4b970" }
 serde = "1.0"
 
 [dev-dependencies]
