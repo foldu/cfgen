@@ -6,6 +6,7 @@ edition = "2018"
 license = "MIT"
 
 [features]
+default = ["with-toml"]
 with-toml = ["cfgen_derive/with-toml", "toml"]
 yaml = ["cfgen_derive/yaml", "serde_yaml"]
 
