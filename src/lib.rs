@@ -131,46 +131,36 @@ impl std::error::Error for Error {
 impl fmt::Display for Error {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::MakeDir(_, path) => {
-                write!(formatter, "Can't create directory {}", path.display())
+            Error::MakeDir(e, path) => write!(
+                formatter,
+                "Can't create directory {}: {}",
+                path.display(),
+                e
+            ),
+            Error::IoWrite(e, path) => {
+                write!(formatter, "Can't write config to {}: {}", path.display(), e)
             }
-            Error::IoWrite(_, path) => {
-                write!(formatter, "Can't write config to {}", path.display())
-            }
-            Error::IoRead(_, path) => {
-                write!(formatter, "Can't read config from {}", path.display())
-            }
+            Error::IoRead(e, path) => write!(
+                formatter,
+                "Can't read config from {}: {}",
+                path.display(),
+                e
+            ),
             #[cfg(feature = "with-toml")]
-            Error::Toml(_, path) => write!(formatter, "Can't read config from {}", path.display()),
+            Error::Toml(e, path) => write!(
+                formatter,
+                "Can't read config from {}: {}",
+                path.display(),
+                e
+            ),
             #[cfg(feature = "yaml")]
-            Error::Yaml(_, path) => write!(formatter, "Can't read config from {}", path.display()),
+            Error::Yaml(e, path) => write!(
+                formatter,
+                "Can't read config from {}: {}",
+                path.display(),
+                e
+            ),
         }
-    }
-}
-
-impl Error {
-    /// Returns a nicely formatted error message for use in applications that don't use
-    /// Error::source chaining.
-    pub fn nice(self) -> NiceError {
-        NiceError(self)
-    }
-}
-
-/// Error with a display implementation that looks nice without source chaining.
-#[derive(Debug)]
-pub struct NiceError(pub Error);
-
-impl std::error::Error for NiceError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.0.source()
-    }
-}
-
-impl fmt::Display for NiceError {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(formatter)?;
-        use std::error::Error;
-        write!(formatter, ": {}", self.source().unwrap())
     }
 }
 
