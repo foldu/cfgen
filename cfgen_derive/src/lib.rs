@@ -1,16 +1,46 @@
 #![recursion_limit = "512"]
 extern crate proc_macro;
 
-use std::{collections::HashMap, env};
+use std::env;
 
 use cfg_if::cfg_if;
+use darling::FromDeriveInput;
 use heck::SnakeCase;
-use lazy_static::lazy_static;
-use maplit::hashmap;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
-use syn::{parse_macro_input, Attribute, Data, DeriveInput, Ident, Lit, Meta, NestedMeta};
+use syn::{parse_macro_input, Data, DeriveInput, Ident};
+
+#[derive(FromDeriveInput, Debug, Default)]
+#[darling(default)]
+#[darling(attributes(cfgen))]
+struct CfgenInput {
+    pub org: Option<String>,
+    pub qualifier: Option<String>,
+    #[darling(rename = "app_name")]
+    pub application: Option<String>,
+    #[darling(rename = "default")]
+    pub default_config_ident: Option<Ident>,
+    pub filename: Option<String>,
+    pub generate_test: Option<bool>,
+    pub format: Option<Format>,
+}
+
+impl darling::FromMeta for Format {
+    fn from_string(value: &str) -> Result<Self, darling::error::Error> {
+        match value {
+            "yaml" => Ok(Format::Yaml),
+            "toml" => Ok(Format::Toml),
+            _ => Err(darling::error::Error::unknown_value("Unknown value")),
+        }
+    }
+}
+
+impl Default for Format {
+    fn default() -> Self {
+        default_format()
+    }
+}
 
 #[proc_macro_derive(Cfgen, attributes(cfgen))]
 pub fn cfgen(tokens: TokenStream) -> TokenStream {
@@ -21,7 +51,10 @@ pub fn cfgen(tokens: TokenStream) -> TokenStream {
         _ => panic!("Deriving cfgen only makes sense for structs"),
     }
 
-    let opt = parse_all_attrs(&input.attrs);
+    let opt = match CfgenInput::from_derive_input(&input) {
+        Ok(opt) => opt.into(),
+        Err(e) => return e.write_errors().into(),
+    };
 
     let impl_cfgen = gen_impl_cfgen(&input, &opt);
     let impl_cfgen_default = opt
@@ -52,13 +85,12 @@ fn gen_impl_cfgen(input: &DeriveInput, cfg_opt: &CfgOpt) -> proc_macro2::TokenSt
     quote! {
         impl #impl_generics ::cfgen::Cfgen for #name #ty_generics #where_clause {
             fn path() -> &'static std::path::Path {
-                use ::cfgen::lazy_static::lazy_static;
-                lazy_static! {
-                    static ref PATH: ::std::path::PathBuf = {
-                        ::cfgen::directories::ProjectDirs::from(#qualifier, #org, #application).expect("Can't create project dirs").config_dir().join(#filename)
-                    };
-
-                };
+                static PATH: ::cfgen::once_cell::sync::Lazy<::std::path::PathBuf> =
+                        ::cfgen::once_cell::sync::Lazy::new(|| ::cfgen::directories::ProjectDirs::from(#qualifier, #org, #application)
+                            .expect("Can't create project dirs")
+                            .config_dir()
+                            .join(#filename)
+                        );
                 &PATH
             }
 
@@ -83,6 +115,17 @@ fn gen_impl_cfgen_default(input: &DeriveInput, cfg_opt: &CfgOpt) -> proc_macro2:
     );
 
     let deserialize = cfg_opt.format.deserialize_from_str();
+
+    let test = if cfg_opt.generate_test {
+        Some(quote! {
+            #[test]
+            fn #test_ident() {
+                let _a: #name = #deserialize(#default_ident).unwrap();
+            }
+        })
+    } else {
+        None
+    };
 
     quote! {
         impl #impl_generics ::cfgen::CfgenDefault for #name #ty_generics #where_clause {
@@ -116,77 +159,7 @@ fn gen_impl_cfgen_default(input: &DeriveInput, cfg_opt: &CfgOpt) -> proc_macro2:
             }
         }
 
-        #[test]
-        fn #test_ident() {
-            let _a: #name = #deserialize(#default_ident).unwrap();
-        }
-    }
-}
-
-enum KvParser {
-    Str(fn(String, &mut CfgOpt)),
-}
-
-fn parse_all_attrs(attrs: &[Attribute]) -> CfgOpt {
-    let mut ret = CfgOpt::default();
-
-    let cfgen_ident = Ident::new("cfgen", Span::call_site());
-
-    for meta in attrs.iter().filter_map(|attr| attr.interpret_meta()) {
-        if meta.name() == cfgen_ident {
-            match meta {
-                Meta::List(opt) => {
-                    for value in opt.nested {
-                        match value {
-                            NestedMeta::Meta(meta) => parse_field(&meta, &mut ret),
-                            NestedMeta::Literal(_) => {
-                                panic!("Unkeyed literal arguments not supported")
-                            }
-                        }
-                    }
-                }
-                Meta::Word(_) => {}
-                Meta::NameValue(_) => {}
-            }
-        }
-    }
-
-    ret
-}
-
-fn parse_field(field: &Meta, cfg_opt: &mut CfgOpt) {
-    const KV_ERR: &str = "cfgen only supports key value pairs in derive options";
-
-    lazy_static! {
-        static ref KV_PARSERS: HashMap<String, KvParser> = {
-            hashmap! {
-                "app_name".to_owned() => KvParser::Str(|s, opt| opt.application = s),
-                "org".to_owned() => KvParser::Str(|s, opt| opt.org = s),
-                "qualifier".to_owned() => KvParser::Str(|s, opt| opt.qualifier = s),
-                "default".to_owned() => KvParser::Str(|s, opt| opt.default_config_ident = Some(Ident::new(&s, Span::call_site()))),
-                "filename".to_owned() => KvParser::Str(|s, opt| opt.filename = s),
-                "format".to_owned() => KvParser::Str(|s, opt| opt.format = s.parse().unwrap()),
-            }
-        };
-    };
-
-    match field {
-        Meta::NameValue(kv) => {
-            let id_string = kv.ident.to_string();
-            let parser = KV_PARSERS
-                .get(&id_string)
-                .unwrap_or_else(|| panic!("Unknown option {}", id_string));
-
-            match (parser, &kv.lit) {
-                (KvParser::Str(fun), Lit::Str(s)) => {
-                    fun(s.value(), cfg_opt);
-                }
-                (KvParser::Str(_), _) => {
-                    panic!("Expected a string literal for key {}", kv.ident);
-                }
-            }
-        }
-        _ => panic!(KV_ERR),
+        #test
     }
 }
 
@@ -219,17 +192,6 @@ impl Format {
     }
 }
 
-impl std::str::FromStr for Format {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "yaml" => Ok(Format::Yaml),
-            "toml" => Ok(Format::Toml),
-            _ => panic!("Unknown format: {}", s),
-        }
-    }
-}
-
 cfg_if! {
     if #[cfg(feature = "with-toml")] {
         fn default_format() -> Format {
@@ -254,6 +216,33 @@ struct CfgOpt {
     pub default_config_ident: Option<Ident>,
     pub filename: String,
     pub format: Format,
+    pub generate_test: bool,
+}
+
+macro_rules! optional_unpack {
+    ($ret:ident = $opt:ident, $($field:ident),+) => {
+        $(
+            if let Some(a) = $opt.$field {
+                $ret.$field = a;
+            }
+        )+
+    }
+}
+
+impl From<CfgenInput> for CfgOpt {
+    fn from(other: CfgenInput) -> Self {
+        let mut ret = Self::default();
+        optional_unpack!(
+            ret = other,
+            org,
+            qualifier,
+            application,
+            filename,
+            format,
+            generate_test
+        );
+        ret
+    }
 }
 
 impl Default for CfgOpt {
@@ -280,6 +269,7 @@ impl Default for CfgOpt {
             default_config_ident: None,
             filename: format.default_filename().to_owned(),
             format,
+            generate_test: true,
         }
     }
 }

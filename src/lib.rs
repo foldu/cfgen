@@ -38,13 +38,15 @@ All keys for the derive macro are optional
 - `default`: const string containing your default config. If no default given, only derives
              Cfgen and without generating an CfgenDefault for your struct.
              Also generates a test that asserts that the default config parses.
+- `generate_test`: Wether to generate an automatic test that tests if the default
+                   config is deserializeable. Defaults to true
 
 All config formats are optional cargo features, if you want to use toml/yaml configuration
 add "with-toml"/"yaml" to the enabled features of this crate.
 
 # Config path construction
 The config path is constructed with the
-[ProjectDirs::from](https://docs.rs/directories/1.0.2/directories/struct.ProjectDirs.html#method.from)
+[ProjectDirs::from](https://docs.rs/directories/2.0.0/directories/struct.ProjectDirs.html#method.from)
 from the [directories](https://crates.io/crates/directories) crate.
 app_name, org and qualifier map to application, organization and qualifier, respectively.
 */
@@ -61,7 +63,7 @@ use std::{
 #[doc(hide)]
 pub use directories;
 #[doc(hide)]
-pub use lazy_static;
+pub use once_cell;
 #[doc(hide)]
 #[cfg(feature = "yaml")]
 pub use serde_yaml;
