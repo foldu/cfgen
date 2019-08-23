@@ -29,3 +29,10 @@ _b: test
 struct _YamlTest {
     _b: String,
 }
+
+#[test]
+#[cfg(feature = "with-toml")]
+fn cfgen_implemented() {
+    let _ = || _TomlTest::load();
+    let _ = || _TomlTest::load_or_write_default();
+}

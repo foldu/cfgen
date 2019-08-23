@@ -241,6 +241,7 @@ impl From<CfgenInput> for CfgOpt {
             format,
             generate_test
         );
+        ret.default_config_ident = other.default_config_ident;
         ret
     }
 }
