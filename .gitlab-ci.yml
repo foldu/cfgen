@@ -16,7 +16,7 @@ test:
   script:
     - rustc --version
     - cargo --version
-    - cargo test
+    - cargo test --features expandpath
     - cargo test --features yaml
     - cargo test --no-default-features --features yaml
 
