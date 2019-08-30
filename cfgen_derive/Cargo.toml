@@ -10,7 +10,6 @@ syn = "1"
 quote = "1"
 proc-macro2 = "1"
 heck = "0.3.1"
-once_cell = "0.2"
 cfg-if = "0.1"
 darling = "0.10.0"
 
