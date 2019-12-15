@@ -6,7 +6,6 @@ depending on the args passed to cfgen.
 # Usage
 ```
 use cfgen::prelude::*;
-use serde_derive::Deserialize;
 
 const DEFAULT_CONFIG: &str = r#"
 foo = 4
@@ -14,7 +13,7 @@ bar = "bar"
 "#;
 
 # #[cfg(feature = "with-toml")]
-#[derive(Cfgen, Deserialize)]
+#[derive(Cfgen, serde::Deserialize)]
 #[cfgen(app_name = "test",
         org = "Big Company",
         format = "toml",
@@ -179,18 +178,22 @@ pub enum ConfigLoad {
 use serde::de::{Deserialize, Deserializer};
 
 // TODO: better doc, link to tilde-expand
-/// Convenience type around PathBuf. Automatically expands strings like "~/thing" to
+/// Convenience function for deserializing `PathBuf`s. Automatically expands `PathBuf`s like "~/thing" to
 /// "/home/your_name/thing"
+/// Example use:
+/// ```rust
+/// use cfgen::prelude::*;
+///
+/// #[derive(Cfgen, serde::Deserialize)]
+/// struct Config {
+///     #[serde(deserialize_with = "cfgen::expandpath")]
+///     a_directory: std::path::PathBuf,
+/// }
+/// ```
 #[cfg(feature = "expandpath")]
-#[derive(Clone, Debug)]
-pub struct ExpandedPath(pub PathBuf);
-
-#[cfg(feature = "expandpath")]
-impl<'de> Deserialize<'de> for ExpandedPath {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        PathBuf::deserialize(deserializer).map(|path| Self(tilde_expand::tilde_expand(path)))
-    }
+pub fn expandpath<'de, D>(deserializer: D) -> Result<PathBuf, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    PathBuf::deserialize(deserializer).map(tilde_expand::tilde_expand)
 }

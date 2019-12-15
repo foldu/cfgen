@@ -1,7 +1,7 @@
 extern crate cfgen;
 
 use cfgen::prelude::*;
-use serde_derive::*;
+use serde::Deserialize;
 
 // TODO: real tests
 
