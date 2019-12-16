@@ -214,5 +214,5 @@ pub fn expandpath_opt<'de, D>(deserializer: D) -> Result<Option<PathBuf>, D::Err
 where
     D: Deserializer<'de>,
 {
-    Option::<PathBuf>::deserialize(deserializer).map(tilde_expand::tilde_expand)
+    Option::<PathBuf>::deserialize(deserializer).map(|buf| buf.map(tilde_expand::tilde_expand))
 }
