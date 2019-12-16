@@ -178,6 +178,7 @@ pub enum ConfigLoad {
 use serde::de::{Deserialize, Deserializer};
 
 // TODO: better doc, link to tilde-expand
+// TODO: Can expandpath and expandpath_opt be unified?
 /// Convenience function for deserializing `PathBuf`s. Automatically expands `PathBuf`s like "~/thing" to
 /// "/home/your_name/thing"
 /// Example use:
@@ -196,4 +197,22 @@ where
     D: Deserializer<'de>,
 {
     PathBuf::deserialize(deserializer).map(tilde_expand::tilde_expand)
+}
+
+/// Same thing is `expandpath`, but for Option<PathBuf>
+/// ```rust
+/// use cfgen::prelude::*;
+///
+/// #[derive(Cfgen, serde::Deserialize)]
+/// struct Config {
+///     #[serde(deserialize_with = "cfgen::expandpath_opt")]
+///     a_directory: Option<std::path::PathBuf>,
+/// }
+/// ```
+#[cfg(feature = "expandpath")]
+pub fn expandpath_opt<'de, D>(deserializer: D) -> Result<Option<PathBuf>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Option::<PathBuf>::deserialize(deserializer).map(tilde_expand::tilde_expand)
 }
