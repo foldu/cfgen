@@ -174,7 +174,6 @@ pub enum ConfigLoad {
     Loaded,
 }
 
-#[cfg(feature = "expandpath")]
 use serde::de::{Deserialize, Deserializer};
 
 // TODO: better doc, link to tilde-expand
@@ -191,7 +190,6 @@ use serde::de::{Deserialize, Deserializer};
 ///     a_directory: std::path::PathBuf,
 /// }
 /// ```
-#[cfg(feature = "expandpath")]
 pub fn expandpath<'de, D>(deserializer: D) -> Result<PathBuf, D::Error>
 where
     D: Deserializer<'de>,
@@ -209,7 +207,6 @@ where
 ///     a_directory: Option<std::path::PathBuf>,
 /// }
 /// ```
-#[cfg(feature = "expandpath")]
 pub fn expandpath_opt<'de, D>(deserializer: D) -> Result<Option<PathBuf>, D::Error>
 where
     D: Deserializer<'de>,
