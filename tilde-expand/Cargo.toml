@@ -2,6 +2,7 @@
 name = "tilde-expand"
 version = "0.1.0"
 authors = ["foldu <foldu@protonmail.com>"]
+license = "MIT"
 edition = "2018"
 
 [dependencies]
